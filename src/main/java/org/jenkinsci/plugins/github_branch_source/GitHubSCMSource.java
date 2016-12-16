@@ -39,6 +39,7 @@ import hudson.console.HyperlinkNote;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.TaskListener;
+import hudson.plugins.git.extensions.impl.CloneOption;
 import hudson.security.ACL;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
@@ -49,6 +50,7 @@ import jenkins.scm.api.SCMRevision;
 import jenkins.scm.api.SCMSourceCriteria;
 import jenkins.scm.api.SCMSourceDescriptor;
 import jenkins.scm.api.SCMSourceOwner;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.transport.RefSpec;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -133,14 +135,17 @@ public class GitHubSCMSource extends AbstractGitSCMSource {
     /** Whether to build PRs filed from a fork, where the build is of the branch head. */
     private @Nonnull Boolean buildForkPRHead = DescriptorImpl.defaultBuildForkPRHead;
 
+    private final String gitCloneReference;
+
     @DataBoundConstructor
-    public GitHubSCMSource(String id, String apiUri, String checkoutCredentialsId, String scanCredentialsId, String repoOwner, String repository) {
+    public GitHubSCMSource(String id, String apiUri, String checkoutCredentialsId, String scanCredentialsId, String repoOwner, String repository, String gitCloneReference) {
         super(id);
         this.apiUri = Util.fixEmpty(apiUri);
         this.repoOwner = repoOwner;
         this.repository = repository;
         this.scanCredentialsId = Util.fixEmpty(scanCredentialsId);
         this.checkoutCredentialsId = checkoutCredentialsId;
+        this.gitCloneReference = gitCloneReference;
     }
 
     /** Use defaults for old settings. */
@@ -323,6 +328,10 @@ public class GitHubSCMSource extends AbstractGitSCMSource {
     @DataBoundSetter
     public void setBuildForkPRHead(boolean buildForkPRHead) {
         this.buildForkPRHead = buildForkPRHead;
+    }
+
+    public String getGitCloneReference() {
+        return gitCloneReference;
     }
 
     @Override
@@ -612,6 +621,15 @@ public class GitHubSCMSource extends AbstractGitSCMSource {
 
     @Override
     public SCM build(SCMHead head, SCMRevision revision) {
+        SCM scm = buildOriginal(head, revision);
+        if (scm instanceof GitSCM && StringUtils.isNoneEmpty(gitCloneReference)) {
+            GitSCM gitSCM = (GitSCM) scm;
+            gitSCM.getExtensions().add(new CloneOption(false, gitCloneReference, null));
+        }
+        return scm;
+    }
+
+    private SCM buildOriginal(SCMHead head, SCMRevision revision) {
         if (revision == null) {
             // TODO will this work sanely for PRs? Branch.scm seems to be used only as a fallback for SCMBinder/SCMVar where they would perhaps better just report an error.
             return super.build(head, null);

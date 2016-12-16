@@ -85,11 +85,14 @@ public class GitHubSCMNavigator extends SCMNavigator {
     /** Whether to build PRs filed from a fork, where the build is of the branch head. */
     private @Nonnull Boolean buildForkPRHead = DescriptorImpl.defaultBuildForkPRHead;
 
-    @DataBoundConstructor public GitHubSCMNavigator(String apiUri, String repoOwner, String scanCredentialsId, String checkoutCredentialsId) {
+    private final String gitCloneReference;
+
+    @DataBoundConstructor public GitHubSCMNavigator(String apiUri, String repoOwner, String scanCredentialsId, String checkoutCredentialsId, String gitCloneReference) {
         this.repoOwner = repoOwner;
         this.scanCredentialsId = Util.fixEmpty(scanCredentialsId);
         this.checkoutCredentialsId = checkoutCredentialsId;
         this.apiUri = Util.fixEmpty(apiUri);
+        this.gitCloneReference = gitCloneReference;
     }
 
     /** Use defaults for old settings. */
@@ -309,7 +312,7 @@ public class GitHubSCMNavigator extends SCMNavigator {
         }
         SCMSourceObserver.ProjectObserver projectObserver = observer.observe(name);
         
-        GitHubSCMSource ghSCMSource = new GitHubSCMSource(null, apiUri, checkoutCredentialsId, scanCredentialsId, repoOwner, name);
+        GitHubSCMSource ghSCMSource = new GitHubSCMSource(null, apiUri, checkoutCredentialsId, scanCredentialsId, repoOwner, name, gitCloneReference);
         ghSCMSource.setExcludes(getExcludes());
         ghSCMSource.setIncludes(getIncludes());
         ghSCMSource.setBuildOriginBranch(getBuildOriginBranch());
@@ -354,7 +357,7 @@ public class GitHubSCMNavigator extends SCMNavigator {
         }
 
         @Override public SCMNavigator newInstance(String name) {
-            return new GitHubSCMNavigator("", name, "", GitHubSCMSource.DescriptorImpl.SAME);
+            return new GitHubSCMNavigator("", name, "", GitHubSCMSource.DescriptorImpl.SAME, "");
         }
 
         @Restricted(NoExternalUse.class)
